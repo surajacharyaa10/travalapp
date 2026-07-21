@@ -15,12 +15,14 @@ This repository contains both the Flutter frontend app and the custom Node.js/Mo
 ## Tech Stack
 
 ### Frontend (Mobile App)
+
 - **Framework**: Flutter (Dart)
 - **State Management**: Riverpod (or Bloc)
 - **Maps & Location**: Google Maps Flutter, Geolocator, Google Places API
 - **Networking**: Dio / Http
 
 ### Backend (Server & API)
+
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: MongoDB (with Mongoose)
@@ -33,6 +35,7 @@ This repository contains both the Flutter frontend app and the custom Node.js/Mo
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (v16+)
 - MongoDB running locally or a MongoDB Atlas URI
 - Flutter SDK
@@ -54,14 +57,16 @@ This repository contains both the Flutter frontend app and the custom Node.js/Mo
    cp .env.example .env
    ```
 4. Start the development server:
+
    ```bash
    npm run dev
    ```
-   *The server will run on http://localhost:5000*
+
+   _The server will run on http://localhost:5000_
 
 ### Frontend Setup
 
-*(Flutter app setup instructions will go here once the frontend is initialized.)*
+_(Flutter app setup instructions will go here once the frontend is initialized.)_
 
 1. Navigate to the frontend directory:
    ```bash
@@ -77,4 +82,5 @@ This repository contains both the Flutter frontend app and the custom Node.js/Mo
    ```
 
 ## License
+
 MIT License
