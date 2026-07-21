@@ -7,6 +7,9 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const bookmarkRoutes = require('./routes/bookmarkRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
+const placesRoutes = require('./routes/placesRoutes');
+const weatherRoutes = require('./routes/weatherRoutes');
+const newsRoutes = require('./routes/newsRoutes');
 
 const app = express();
 
@@ -25,6 +28,9 @@ mongoose
 app.use('/api/auth', authRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/places', placesRoutes);
+app.use('/api/weather', weatherRoutes);
+app.use('/api/news', newsRoutes);
 
 // Health Check
 app.get('/', (req, res) => {
