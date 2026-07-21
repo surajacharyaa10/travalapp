@@ -65,15 +65,15 @@ This repository contains both the Flutter frontend app and the custom Node.js/Mo
 
 1. Navigate to the frontend directory:
    ```bash
-   # cd frontend
+   cd frontend
    ```
 2. Get Flutter packages:
    ```bash
-   # flutter pub get
+   flutter pub get
    ```
 3. Run the app:
    ```bash
-   # flutter run
+   flutter run
    ```
 
 ## License
