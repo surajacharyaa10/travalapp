@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(const Duration(seconds: 3));
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
         if (permission == LocationPermission.denied) {
@@ -65,14 +65,14 @@ class _HomeScreenState extends State<HomeScreen> {
             permission == LocationPermission.always) {
           Position position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.low,
-          );
+          ).timeout(const Duration(seconds: 5));
 
           _currentPosition = position;
 
           List<Placemark> placemarks = await placemarkFromCoordinates(
             position.latitude,
             position.longitude,
-          );
+          ).timeout(const Duration(seconds: 3));
 
           if (placemarks.isNotEmpty) {
             final pm = placemarks.first;
@@ -253,10 +253,30 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Hello, $userName!',
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Hello, $userName!',
+                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                ),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 14, color: Colors.blueAccent),
+                    const SizedBox(width: 4),
+                    Text(
+                      _currentLocationString,
+                      style: const TextStyle(
+                        fontSize: 14, 
+                        color: Colors.blueAccent, 
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+            const SizedBox(height: 8),
             const Text(
               'Where do you want to go?',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
