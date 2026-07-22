@@ -5,7 +5,10 @@ class BookmarkService {
 
   Future<List<dynamic>> getBookmarks() async {
     final response = await _apiClient.get('/api/bookmarks');
-    return response as List<dynamic>;
+    if (response is List) {
+      return response;
+    }
+    return [];
   }
 
   Future<dynamic> addBookmark({

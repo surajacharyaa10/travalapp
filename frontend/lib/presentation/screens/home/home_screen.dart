@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -6,6 +7,9 @@ import '../../../data/services/bookmark_service.dart';
 import '../../../data/services/session_manager.dart';
 import '../../../data/services/api_client.dart';
 import 'category_places_screen.dart';
+import '../../widgets/ai_recommendations_panel.dart';
+import '../../widgets/category_selector.dart';
+import '../../widgets/nearby_places_list.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -128,8 +132,31 @@ class _HomeScreenState extends State<HomeScreen> {
         'preferences':
             SessionManager.user?['preferences'] ?? ['dining', 'adventure'],
       });
+      
+      final recommendations = response['recommendations'];
       setState(() {
-        _aiRecommendations = response['recommendations'] ?? [];
+        if (recommendations is List) {
+          _aiRecommendations = recommendations;
+        } else if (recommendations is String) {
+          try {
+            final parsed = json.decode(recommendations);
+            if (parsed is List) {
+              _aiRecommendations = parsed;
+            } else if (parsed is Map && parsed['recommendations'] is List) {
+              _aiRecommendations = parsed['recommendations'];
+            } else {
+              _aiRecommendations = [
+                {'name': 'AI Travel Suggestions', 'description': recommendations}
+              ];
+            }
+          } catch (_) {
+            _aiRecommendations = [
+              {'name': 'AI Travel Suggestions', 'description': recommendations}
+            ];
+          }
+        } else {
+          _aiRecommendations = [];
+        }
       });
     } catch (e) {
       debugPrint('Error getting AI recommendations: $e');
@@ -226,97 +253,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
 
             // AI Recommendations Panel
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blueAccent.shade400, Colors.blue.shade700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(15),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blueAccent.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.auto_awesome, color: Colors.amber),
-                      SizedBox(width: 8),
-                      Text(
-                        'AI Personal Travel Tips',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _isLoadingAI
-                      ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        )
-                      : _aiRecommendations.isEmpty
-                      ? const Text(
-                          'No recommendations found for your location.',
-                          style: TextStyle(color: Colors.white70),
-                        )
-                      : Column(
-                          children: _aiRecommendations.map<Widget>((rec) {
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.location_on,
-                                        color: Colors.amber,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          rec['name'] ?? 'Recommendation',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    rec['description'] ?? '',
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                ],
-              ),
+            AiRecommendationsPanel(
+              recommendations: _aiRecommendations,
+              isLoading: _isLoadingAI,
             ),
             const SizedBox(height: 30),
 
@@ -331,14 +270,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildCategoryItem('Dining', Icons.restaurant, Colors.orange),
-                _buildCategoryItem('Hotels', Icons.hotel, Colors.blue),
-                _buildCategoryItem('Museums', Icons.museum, Colors.purple),
-                _buildCategoryItem('Cafes', Icons.local_cafe, Colors.brown),
-              ],
+            CategorySelector(
+              selectedCategory: _selectedCategory,
+              onBookmarkRefreshed: _fetchBookmarks,
             ),
             const SizedBox(height: 30),
 
@@ -349,134 +283,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
 
-            _isLoadingPlaces
-                ? const Center(child: CircularProgressIndicator())
-                : _places.isEmpty
-                ? const Center(
-                    child: Text('No destinations found for this category.'),
-                  )
-                : ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: _places.length,
-                    itemBuilder: (context, index) {
-                      final place = _places[index];
-                      final isBookmarked = _bookmarks.any(
-                        (b) => b['placeId'] == place['place_id'],
-                      );
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        elevation: 1,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(12),
-                          leading: Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: Colors.blueAccent.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.place,
-                              color: Colors.blueAccent,
-                              size: 30,
-                            ),
-                          ),
-                          title: Text(
-                            place['name'] ?? 'Unknown Destination',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Text(place['vicinity'] ?? 'Unknown Address'),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.star,
-                                    color: Colors.amber,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${place['rating'] ?? "N/A"} (${place['user_ratings_total'] ?? 0} reviews)',
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          trailing: IconButton(
-                            icon: Icon(
-                              isBookmarked
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                              color: isBookmarked
-                                  ? Colors.blueAccent
-                                  : Colors.grey,
-                            ),
-                            onPressed: () => _toggleBookmark(place),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            NearbyPlacesList(
+              places: _places,
+              bookmarks: _bookmarks,
+              isLoading: _isLoadingPlaces,
+              onToggleBookmark: _toggleBookmark,
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryItem(String label, IconData icon, Color color) {
-    final categoryCode = _categoryMapping[label] ?? 'restaurant';
-    final isSelected = _selectedCategory == categoryCode;
-
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CategoryPlacesScreen(
-              categoryName: label,
-              categoryType: categoryCode,
-            ),
-          ),
-        ).then((_) => _fetchBookmarks()); // Refresh bookmarks when returning
-      },
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? color.withOpacity(0.3)
-                  : color.withOpacity(0.1),
-              shape: BoxShape.circle,
-              border: isSelected ? Border.all(color: color, width: 2) : null,
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? Colors.black87 : Colors.grey[700],
-            ),
-          ),
-        ],
       ),
     );
   }
