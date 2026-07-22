@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
 import 'weather/weather_screen.dart';
-import 'map/map_screen.dart';
 import 'bookmarks/bookmarks_screen.dart';
 import 'profile/profile_screen.dart';
 
@@ -18,7 +17,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   final List<Widget> _screens = const [
     HomeScreen(),
     WeatherScreen(),
-    MapScreen(),
     BookmarksScreen(),
     ProfileScreen(),
   ];
@@ -43,7 +41,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.cloud), label: 'Weather'),
-          BottomNavigationBarItem(icon: Icon(Icons.map_outlined), label: 'Map'),
           BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Saved'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
