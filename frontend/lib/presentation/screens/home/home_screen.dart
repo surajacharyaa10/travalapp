@@ -46,6 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _initLocationAndFetchAI();
   }
 
+  Position? _currentPosition;
+
   Future<void> _initLocationAndFetchAI() async {
     setState(() {
       _isLoadingAI = true;
@@ -64,6 +66,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Position position = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.low,
           );
+
+          _currentPosition = position;
 
           List<Placemark> placemarks = await placemarkFromCoordinates(
             position.latitude,
@@ -86,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _fetchAIRecommendations();
+    _fetchPlaces(); // Refresh places with new coordinates
   }
 
   Future<void> _fetchPlaces() async {
@@ -93,10 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
       _isLoadingPlaces = true;
     });
     try {
-      // Defaulting to Pokhara coordinates for nearby search
+      // Use device GPS if available, otherwise fallback to Pokhara
+      final lat = _currentPosition?.latitude ?? 28.2096;
+      final lng = _currentPosition?.longitude ?? 83.9856;
+      
       final response = await _placesService.getNearbyPlaces(
-        28.2096,
-        83.9856,
+        lat,
+        lng,
         _selectedCategory,
       );
       setState(() {
