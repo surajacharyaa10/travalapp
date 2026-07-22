@@ -3,6 +3,7 @@ import '../../../data/services/places_service.dart';
 import '../../../data/services/bookmark_service.dart';
 import '../../../data/services/session_manager.dart';
 import '../../../data/services/api_client.dart';
+import 'category_places_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -333,10 +334,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return InkWell(
       onTap: () {
-        setState(() {
-          _selectedCategory = categoryCode;
-        });
-        _fetchPlaces();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CategoryPlacesScreen(
+              categoryName: label,
+              categoryType: categoryCode,
+            ),
+          ),
+        ).then((_) => _fetchBookmarks()); // Refresh bookmarks when returning
       },
       child: Column(
         children: [
