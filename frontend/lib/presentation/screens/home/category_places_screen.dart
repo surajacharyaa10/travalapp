@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/places_service.dart';
 import '../../../data/services/bookmark_service.dart';
+import 'place_details_screen.dart';
 
 class CategoryPlacesScreen extends StatefulWidget {
   final String categoryName;
@@ -102,6 +103,15 @@ class _CategoryPlacesScreenState extends State<CategoryPlacesScreen> {
     }
   }
 
+  void _openPlaceDetails(Map<String, dynamic> place) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlaceDetailsScreen(place: place),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,6 +145,7 @@ class _CategoryPlacesScreenState extends State<CategoryPlacesScreen> {
                         ),
                         elevation: 1,
                         child: ListTile(
+                          onTap: () => _openPlaceDetails(place),
                           contentPadding: const EdgeInsets.all(12),
                           leading: Container(
                             width: 60,
