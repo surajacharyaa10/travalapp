@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,14 +12,20 @@ class PlaceDetailsScreen extends StatelessWidget {
     final lng = place['geometry']?['location']?['lng'];
     
     if (lat != null && lng != null) {
-      // Use the Google Maps directions URL scheme
-      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+      // Use Apple Maps for iOS to prevent Safari deep link errors, and Google Maps for Android
+      final Uri url;
+      if (Platform.isIOS) {
+        url = Uri.parse('http://maps.apple.com/?daddr=$lat,$lng');
+      } else {
+        url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+      }
+
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open Google Maps')),
+            const SnackBar(content: Text('Could not open Maps app')),
           );
         }
       }
