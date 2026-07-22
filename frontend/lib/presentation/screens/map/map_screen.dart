@@ -29,22 +29,26 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _initMap() async {
     try {
-      // Fetch User Location
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(const Duration(seconds: 3));
-      if (serviceEnabled) {
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-        }
+      // Fetch User Location gracefully
+      try {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(const Duration(seconds: 3));
+        if (serviceEnabled) {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
 
-        if (permission == LocationPermission.whileInUse ||
-            permission == LocationPermission.always) {
-          Position position = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.high,
-          ).timeout(const Duration(seconds: 5));
-          
-          _currentLocation = LatLng(position.latitude, position.longitude);
+          if (permission == LocationPermission.whileInUse ||
+              permission == LocationPermission.always) {
+            Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+            ).timeout(const Duration(seconds: 5));
+            
+            _currentLocation = LatLng(position.latitude, position.longitude);
+          }
         }
+      } catch (locError) {
+        debugPrint('GPS location failed/timed out, using default: $locError');
       }
 
       // Add user marker
