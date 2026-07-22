@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import '../screens/home/place_details_screen.dart';
 
 class NearbyPlacesList extends StatelessWidget {
   final List<dynamic> places;
@@ -15,18 +15,13 @@ class NearbyPlacesList extends StatelessWidget {
     required this.onToggleBookmark,
   });
 
-  Future<void> _openInGoogleMaps(Map<String, dynamic> place) async {
-    final lat = place['geometry']?['location']?['lat'];
-    final lng = place['geometry']?['location']?['lng'];
-    
-    if (lat != null && lng != null) {
-      final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        debugPrint('Could not launch maps for ${place['name']}');
-      }
-    }
+  void _openPlaceDetails(BuildContext context, Map<String, dynamic> place) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlaceDetailsScreen(place: place),
+      ),
+    );
   }
 
   @override
@@ -54,7 +49,7 @@ class NearbyPlacesList extends StatelessWidget {
           ),
           elevation: 1,
           child: ListTile(
-            onTap: () => _openInGoogleMaps(place),
+            onTap: () => _openPlaceDetails(context, place),
             contentPadding: const EdgeInsets.all(12),
             leading: Container(
               width: 60,
