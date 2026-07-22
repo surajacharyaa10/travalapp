@@ -12,12 +12,13 @@ class AuthService {
     return response; // Contains token and user details
   }
 
-  Future<Map<String, dynamic>> register(String name, String email, String password) async {
+  Future<Map<String, dynamic>> register(String name, String email, String password, {List<String>? preferences}) async {
     // Assuming backend has a /api/auth/register endpoint
     final response = await _apiClient.post('/api/auth/register', {
       'name': name,
       'email': email,
       'password': password,
+      'preferences': preferences ?? [],
     });
     return response;
   }
