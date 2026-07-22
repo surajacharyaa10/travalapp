@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../../data/services/places_service.dart';
 import '../../../data/services/bookmark_service.dart';
 import '../../../data/services/session_manager.dart';
@@ -21,8 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<dynamic> _bookmarks = [];
   bool _isLoadingPlaces = false;
   String _selectedCategory = 'restaurant';
-  String _aiRecommendations = '';
+  List<dynamic> _aiRecommendations = [];
   bool _isLoadingAI = false;
+  String _currentLocationString = 'Pokhara, Nepal'; // Default fallback
 
   final Map<String, String> _categoryMapping = {
     'Dining': 'restaurant',
@@ -36,6 +39,48 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _fetchPlaces();
     _fetchBookmarks();
+    _initLocationAndFetchAI();
+  }
+
+  Future<void> _initLocationAndFetchAI() async {
+    setState(() {
+      _isLoadingAI = true;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          Position position = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low,
+          );
+
+          List<Placemark> placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
+
+          if (placemarks.isNotEmpty) {
+            final pm = placemarks.first;
+            final city =
+                pm.locality ?? pm.subAdministrativeArea ?? 'Unknown City';
+            final country = pm.country ?? 'Unknown Country';
+            setState(() {
+              _currentLocationString = '$city, $country';
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting GPS location: $e');
+    }
+
     _fetchAIRecommendations();
   }
 
@@ -45,7 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       // Defaulting to Pokhara coordinates for nearby search
-      final response = await _placesService.getNearbyPlaces(28.2096, 83.9856, _selectedCategory);
+      final response = await _placesService.getNearbyPlaces(
+        28.2096,
+        83.9856,
+        _selectedCategory,
+      );
       setState(() {
         _places = response['results'] ?? [];
       });
@@ -75,16 +124,17 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       final response = await _apiClient.post('/api/recommendations', {
-        'location': 'Pokhara, Nepal',
-        'preferences': SessionManager.user?['preferences'] ?? ['dining', 'adventure']
+        'location': _currentLocationString,
+        'preferences':
+            SessionManager.user?['preferences'] ?? ['dining', 'adventure'],
       });
       setState(() {
-        _aiRecommendations = response['recommendations'] ?? '';
+        _aiRecommendations = response['recommendations'] ?? [];
       });
     } catch (e) {
       debugPrint('Error getting AI recommendations: $e');
       setState(() {
-        _aiRecommendations = 'Could not load custom recommendations at this time.';
+        _aiRecommendations = [];
       });
     } finally {
       setState(() {
@@ -94,11 +144,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _toggleBookmark(Map<String, dynamic> place) async {
-    final isBookmarked = _bookmarks.any((b) => b['placeId'] == place['place_id']);
+    final isBookmarked = _bookmarks.any(
+      (b) => b['placeId'] == place['place_id'],
+    );
 
     try {
       if (isBookmarked) {
-        final bookmark = _bookmarks.firstWhere((b) => b['placeId'] == place['place_id']);
+        final bookmark = _bookmarks.firstWhere(
+          (b) => b['placeId'] == place['place_id'],
+        );
         await _bookmarkService.removeBookmark(bookmark['_id']);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Removed from Saved Places')),
@@ -110,15 +164,15 @@ class _HomeScreenState extends State<HomeScreen> {
           address: place['vicinity'] ?? 'Unknown Address',
           category: _selectedCategory,
         );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved to Bookmarks!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Saved to Bookmarks!')));
       }
       _fetchBookmarks();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update bookmark: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to update bookmark: $e')));
     }
   }
 
@@ -134,10 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.black87,
         title: const Text(
           'TripSense',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
         ),
         actions: [
           IconButton(
@@ -150,10 +201,13 @@ class _HomeScreenState extends State<HomeScreen> {
               backgroundColor: Colors.blueAccent,
               child: Text(
                 userName.substring(0, 1).toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          )
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -167,10 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Text(
               'Where do you want to go?',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-              ),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 20),
 
@@ -211,14 +262,58 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 10),
                   _isLoadingAI
-                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                      : Text(
-                          _aiRecommendations,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            height: 1.4,
-                          ),
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                      : _aiRecommendations.isEmpty
+                      ? const Text(
+                          'No recommendations found for your location.',
+                          style: TextStyle(color: Colors.white70),
+                        )
+                      : Column(
+                          children: _aiRecommendations.map<Widget>((rec) {
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on,
+                                        color: Colors.amber,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          rec['name'] ?? 'Recommendation',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    rec['description'] ?? '',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ),
                 ],
               ),
@@ -231,10 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: const [
                 Text(
                   'Categories',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -253,75 +345,94 @@ class _HomeScreenState extends State<HomeScreen> {
             // Nearby Places section
             const Text(
               'Popular Destinations Nearby',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
             _isLoadingPlaces
                 ? const Center(child: CircularProgressIndicator())
                 : _places.isEmpty
-                    ? const Center(child: Text('No destinations found for this category.'))
-                    : ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: _places.length,
-                        itemBuilder: (context, index) {
-                          final place = _places[index];
-                          final isBookmarked = _bookmarks.any((b) => b['placeId'] == place['place_id']);
+                ? const Center(
+                    child: Text('No destinations found for this category.'),
+                  )
+                : ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: _places.length,
+                    itemBuilder: (context, index) {
+                      final place = _places[index];
+                      final isBookmarked = _bookmarks.any(
+                        (b) => b['placeId'] == place['place_id'],
+                      );
 
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 1,
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.all(12),
+                          leading: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: Colors.blueAccent.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            elevation: 1,
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(12),
-                              leading: Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: Colors.blueAccent.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.place, color: Colors.blueAccent, size: 30),
-                              ),
-                              title: Text(
-                                place['name'] ?? 'Unknown Destination',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            child: const Icon(
+                              Icons.place,
+                              color: Colors.blueAccent,
+                              size: 30,
+                            ),
+                          ),
+                          title: Text(
+                            place['name'] ?? 'Unknown Destination',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 4),
+                              Text(place['vicinity'] ?? 'Unknown Address'),
+                              const SizedBox(height: 4),
+                              Row(
                                 children: [
-                                  const SizedBox(height: 4),
-                                  Text(place['vicinity'] ?? 'Unknown Address'),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 16),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${place['rating'] ?? "N/A"} (${place['user_ratings_total'] ?? 0} reviews)',
-                                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                                      ),
-                                    ],
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${place['rating'] ?? "N/A"} (${place['user_ratings_total'] ?? 0} reviews)',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ],
                               ),
-                              trailing: IconButton(
-                                icon: Icon(
-                                  isBookmarked ? Icons.bookmark : Icons.bookmark_border,
-                                  color: isBookmarked ? Colors.blueAccent : Colors.grey,
-                                ),
-                                onPressed: () => _toggleBookmark(place),
-                              ),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            icon: Icon(
+                              isBookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: isBookmarked
+                                  ? Colors.blueAccent
+                                  : Colors.grey,
                             ),
-                          );
-                        },
-                      ),
+                            onPressed: () => _toggleBookmark(place),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ],
         ),
       ),
@@ -349,7 +460,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isSelected ? color.withOpacity(0.3) : color.withOpacity(0.1),
+              color: isSelected
+                  ? color.withOpacity(0.3)
+                  : color.withOpacity(0.1),
               shape: BoxShape.circle,
               border: isSelected ? Border.all(color: color, width: 2) : null,
             ),

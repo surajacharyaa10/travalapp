@@ -18,13 +18,14 @@ const getRecommendations = async (preferences, location, searchHistory) => {
       throw new Error("Groq API client not initialized");
     }
 
-    const prompt = `You are an intelligent travel guide. Based on the user's preferences: [${preferences.join(', ')}], their current location or target location: ${location}, and their search history: [${searchHistory.join(', ')}], provide 3 personalized travel recommendations. Format the response clearly with names and brief descriptions.`;
+    const prompt = `You are an intelligent travel guide. Based on the user's preferences: [${preferences.join(', ')}], their current location/country: ${location}, and their search history: [${searchHistory.join(', ')}], provide 3 personalized travel recommendations for this specific place and its country. 
+    You MUST respond in a JSON object with a single "recommendations" key containing an array of objects. Each object must have "name" and "description" keys.`;
 
     const chatCompletion = await groq.chat.completions.create({
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful travel assistant.',
+          content: 'You are a helpful travel assistant. Always output valid JSON.',
         },
         {
           role: 'user',
@@ -32,21 +33,28 @@ const getRecommendations = async (preferences, location, searchHistory) => {
         },
       ],
       model: 'llama-3.1-8b-instant',
+      response_format: { type: "json_object" }
     });
 
-    return chatCompletion.choices[0]?.message?.content || '';
+    return chatCompletion.choices[0]?.message?.content || '{}';
   } catch (error) {
     console.error('Error fetching recommendations from Groq, using mock fallback:', error.message);
-    return `### Recommended for You in ${location || 'your area'}:
-
-1. **Alpine Peak Viewpoint**
-   *A breathtaking destination matching your interest in adventure and scenic views. Enjoy early morning sunrise sights.*
-
-2. **The local Heritage Museum**
-   *Immerse yourself in history and rich cultural displays. Perfect for a cozy afternoon exploring exhibitions.*
-
-3. **Gourmet Street Food Market**
-   *A paradise matching your dining interest. Explore local food stalls, organic snacks, and vibrant live music.*`;
+    return JSON.stringify({
+      recommendations: [
+        {
+          name: "Alpine Peak Viewpoint",
+          description: `A breathtaking destination matching your interest in adventure and scenic views near ${location || 'your area'}. Enjoy early morning sunrise sights.`
+        },
+        {
+          name: "The local Heritage Museum",
+          description: "Immerse yourself in history and rich cultural displays. Perfect for a cozy afternoon exploring exhibitions."
+        },
+        {
+          name: "Gourmet Street Food Market",
+          description: "A paradise matching your dining interest. Explore local food stalls, organic snacks, and vibrant live music."
+        }
+      ]
+    });
   }
 };
 

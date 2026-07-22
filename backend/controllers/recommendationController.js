@@ -15,7 +15,18 @@ const fetchRecommendations = async (req, res) => {
 
     const aiResponse = await getRecommendations(userPrefs, location, searchQueries);
     
-    res.json({ recommendations: aiResponse });
+    let parsedRecommendations = [];
+    try {
+      const parsed = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
+      parsedRecommendations = parsed.recommendations || [];
+    } catch (e) {
+      console.error('Failed to parse AI response as JSON:', e);
+      parsedRecommendations = [
+        { name: "Recommendation", description: aiResponse }
+      ];
+    }
+
+    res.json({ recommendations: parsedRecommendations });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching recommendations', error: error.message });
   }
