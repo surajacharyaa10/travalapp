@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
         'preferences':
             SessionManager.user?['preferences'] ?? ['dining', 'adventure'],
       });
-      
+
       final recommendations = response['recommendations'];
       setState(() {
         if (recommendations is List) {
@@ -146,12 +146,15 @@ class _HomeScreenState extends State<HomeScreen> {
               _aiRecommendations = parsed['recommendations'];
             } else {
               _aiRecommendations = [
-                {'name': 'AI Travel Suggestions', 'description': recommendations}
+                {
+                  'name': 'AI Travel Suggestions',
+                  'description': recommendations,
+                },
               ];
             }
           } catch (_) {
             _aiRecommendations = [
-              {'name': 'AI Travel Suggestions', 'description': recommendations}
+              {'name': 'AI Travel Suggestions', 'description': recommendations},
             ];
           }
         } else {
