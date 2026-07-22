@@ -17,7 +17,7 @@ class PlaceDetailsScreen extends StatelessWidget {
       if (Platform.isIOS) {
         url = Uri.parse('http://maps.apple.com/?daddr=$lat,$lng');
       } else {
-        url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+        url = Uri.parse('google.navigation:q=$lat,$lng');
       }
 
       if (await canLaunchUrl(url)) {
