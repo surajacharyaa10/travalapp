@@ -46,6 +46,32 @@ const getIsoline = async (req, res) => {
   }
 };
 
+const getTile = async (req, res) => {
+  try {
+    const { z, x, y } = req.params;
+    const apiKey = process.env.GEOAPIFY_API_KEY;
+    
+    if (!apiKey) {
+      return res.status(500).send('Geoapify API key not configured');
+    }
+
+    const url = `https://maps.geoapify.com/v1/tile/osm-liberty/${z}/${x}/${y}.png?apiKey=${apiKey}`;
+    
+    const response = await axios({
+      method: 'get',
+      url: url,
+      responseType: 'stream'
+    });
+    
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+    response.data.pipe(res);
+  } catch (error) {
+    console.error('Error fetching tile:', error.message);
+    res.status(500).send('Error fetching tile');
+  }
+};
+
 // We will return the API key strictly for the frontend map tile layer,
 // since Map raster tiles must be loaded directly by flutter_map to be performant.
 const getMapConfig = async (req, res) => {
@@ -59,5 +85,6 @@ const getMapConfig = async (req, res) => {
 module.exports = {
   getRouting,
   getIsoline,
-  getMapConfig
+  getMapConfig,
+  getTile
 };

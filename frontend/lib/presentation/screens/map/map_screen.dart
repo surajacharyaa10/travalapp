@@ -15,7 +15,6 @@ class _MapScreenState extends State<MapScreen> {
   final ApiClient _apiClient = ApiClient();
   final MapController _mapController = MapController();
   
-  String? _geoapifyKey;
   bool _isLoading = true;
   String _errorMessage = '';
   
@@ -30,15 +29,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _initMap() async {
     try {
-      // 1. Fetch Geoapify API Key from Backend
-      final configResponse = await _apiClient.get('/api/map/config');
-      _geoapifyKey = configResponse['apiKey'];
-
-      if (_geoapifyKey == null) {
-        throw Exception("Could not fetch Map configuration.");
-      }
-
-      // 2. Fetch User Location
+      // Fetch User Location
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(const Duration(seconds: 3));
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
@@ -117,10 +108,7 @@ class _MapScreenState extends State<MapScreen> {
         ),
         children: [
           TileLayer(
-            urlTemplate: 'https://maps.geoapify.com/v1/tile/osm-liberty/{z}/{x}/{y}.png?apiKey={apiKey}',
-            additionalOptions: {
-              'apiKey': _geoapifyKey ?? '',
-            },
+            urlTemplate: '${ApiClient.baseUrl}/api/map/tile/{z}/{x}/{y}',
             userAgentPackageName: 'com.example.travelapp',
           ),
           MarkerLayer(
