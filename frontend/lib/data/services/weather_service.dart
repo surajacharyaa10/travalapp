@@ -3,9 +3,12 @@ import 'api_client.dart';
 class WeatherService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<dynamic> getCurrentWeather(double lat, double lng) async {
-    // Assuming backend endpoint: /api/weather/current?lat=...&lng=...
-    final response = await _apiClient.get('/api/weather/current?lat=$lat&lng=$lng');
+  Future<dynamic> getCurrentWeather(double lat, double lng, {String? city}) async {
+    String endpoint = '/api/weather/current?lat=$lat&lng=$lng';
+    if (city != null && city.isNotEmpty) {
+      endpoint += '&city=${Uri.encodeComponent(city)}';
+    }
+    final response = await _apiClient.get(endpoint);
     return response;
   }
 

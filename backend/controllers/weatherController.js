@@ -23,7 +23,9 @@ const getWeather = async (req, res) => {
     const params = {
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
-      daily: ["weather_code", "sunrise", "sunset", "temperature_2m_max", "temperature_2m_min"],
+      past_days: 7,
+      forecast_days: 7,
+      daily: ["weather_code", "temperature_2m_max", "temperature_2m_min"],
       hourly: ["temperature_2m", "relative_humidity_2m", "weather_code"],
       current: ["temperature_2m", "weather_code", "wind_speed_10m", "cloud_cover"],
     };
@@ -32,8 +34,10 @@ const getWeather = async (req, res) => {
     const responses = await fetchWeatherApi(url, params);
     
     const response = responses[0];
+    const utcOffsetSeconds = response.utcOffsetSeconds();
     const current = response.current();
     const hourly = response.hourly();
+    const daily = response.daily();
     
     const temp = current.variables(0).value();
     const weatherCode = current.variables(1).value();
@@ -42,6 +46,23 @@ const getWeather = async (req, res) => {
     // Get humidity from first hourly entry as current doesn't have it
     const humidityArray = hourly.variables(1).valuesArray();
     const humidity = humidityArray.length > 0 ? humidityArray[0] : 0;
+
+    // Process daily forecast
+    const dailyTime = Array.from(
+      { length: (Number(daily.timeEnd()) - Number(daily.time())) / daily.interval() },
+      (_ , i) => new Date((Number(daily.time()) + i * daily.interval() + utcOffsetSeconds) * 1000)
+    );
+    const dailyWeatherCode = Array.from(daily.variables(0).valuesArray());
+    const dailyTempMax = Array.from(daily.variables(1).valuesArray());
+    const dailyTempMin = Array.from(daily.variables(2).valuesArray());
+    
+    const dailyForecast = dailyTime.map((t, index) => ({
+      date: t.toISOString(),
+      weather_code: dailyWeatherCode[index],
+      description: weatherCodeMap[dailyWeatherCode[index]] || 'Unknown',
+      temp_max: dailyTempMax[index],
+      temp_min: dailyTempMin[index],
+    }));
 
     return res.json({
       name: city || 'Current Location',
@@ -53,12 +74,13 @@ const getWeather = async (req, res) => {
         {
           main: weatherCodeMap[weatherCode] || 'Unknown',
           description: weatherCodeMap[weatherCode] || 'Unknown',
-          icon: '01d' // Hardcoded icon for now or map it if needed
+          icon: '01d' 
         }
       ],
       wind: {
         speed: windSpeed
-      }
+      },
+      daily: dailyForecast
     });
   } catch (error) {
     console.error('Error fetching weather:', error);
