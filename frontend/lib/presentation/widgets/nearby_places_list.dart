@@ -51,14 +51,20 @@ class NearbyPlacesList extends StatelessWidget {
           child: ListTile(
             onTap: () => _openPlaceDetails(context, place),
             contentPadding: const EdgeInsets.all(12),
-            leading: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 60,
+                height: 60,
                 color: Colors.blueAccent.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10),
+                child: place['photoUrl'] != null && place['photoUrl'].toString().isNotEmpty
+                    ? Image.network(
+                        place['photoUrl'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const Icon(Icons.place, color: Colors.blueAccent, size: 30),
+                      )
+                    : const Icon(Icons.place, color: Colors.blueAccent, size: 30),
               ),
-              child: const Icon(Icons.place, color: Colors.blueAccent, size: 30),
             ),
             title: Text(
               place['name'] ?? 'Unknown Destination',
