@@ -218,6 +218,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final userName = SessionManager.user?['name'] ?? 'Traveler';
 
+    String displayLocation = _currentLocationString;
+    if (displayLocation.length > 15 && displayLocation.contains(',')) {
+      displayLocation = '${displayLocation.split(',')[0]}...';
+    }
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -256,23 +261,35 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Hello, $userName!',
-                  style: const TextStyle(fontSize: 16, color: Colors.black54),
+                Flexible(
+                  flex: 1,
+                  child: Text(
+                    'Hello, $userName!',
+                    style: const TextStyle(fontSize: 16, color: Colors.black54),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 14, color: Colors.blueAccent),
-                    const SizedBox(width: 4),
-                    Text(
-                      _currentLocationString,
-                      style: const TextStyle(
-                        fontSize: 14, 
-                        color: Colors.blueAccent, 
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 16),
+                Flexible(
+                  flex: 1,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Icon(Icons.location_on, size: 14, color: Colors.blueAccent),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          displayLocation,
+                          style: const TextStyle(
+                            fontSize: 14, 
+                            color: Colors.blueAccent, 
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
