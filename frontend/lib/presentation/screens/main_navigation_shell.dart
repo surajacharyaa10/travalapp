@@ -3,6 +3,7 @@ import 'home/home_screen.dart';
 import 'weather/weather_screen.dart';
 import 'bookmarks/bookmarks_screen.dart';
 import 'profile/profile_screen.dart';
+import 'chatbot/chatbot_screen.dart';
 
 class MainNavigationShell extends StatefulWidget {
   const MainNavigationShell({super.key});
@@ -44,6 +45,16 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           BottomNavigationBarItem(icon: Icon(Icons.bookmark), label: 'Saved'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatbotScreen()),
+          );
+        },
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.smart_toy, color: Colors.white),
       ),
     );
   }

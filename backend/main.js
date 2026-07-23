@@ -11,6 +11,7 @@ const placesRoutes = require("./routes/placesRoutes");
 const weatherRoutes = require("./routes/weatherRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const mapRoutes = require("./routes/mapRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use("/api/places", placesRoutes);
 app.use("/api/weather", weatherRoutes);
 app.use("/api/news", newsRoutes);
 app.use("/api/map", mapRoutes);
+app.use("/api/chat", chatRoutes);
 
 // Health Check
 app.get("/", (req, res) => {

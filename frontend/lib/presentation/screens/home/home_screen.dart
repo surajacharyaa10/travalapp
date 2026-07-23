@@ -54,7 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(const Duration(seconds: 3));
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled().timeout(
+        const Duration(seconds: 3),
+      );
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
         if (permission == LocationPermission.denied) {
@@ -101,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Use device GPS if available, otherwise fallback to Pokhara
       final lat = _currentPosition?.latitude ?? 28.2096;
       final lng = _currentPosition?.longitude ?? 83.9856;
-      
+
       final response = await _placesService.getNearbyPlaces(
         lat,
         lng,
@@ -218,11 +220,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final userName = SessionManager.user?['name'] ?? 'Traveler';
 
-    String displayLocation = _currentLocationString;
-    if (displayLocation.length > 15 && displayLocation.contains(',')) {
-      displayLocation = '${displayLocation.split(',')[0]}...';
-    }
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
@@ -275,14 +272,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const Icon(Icons.location_on, size: 14, color: Colors.blueAccent),
+                      const Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.blueAccent,
+                      ),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          displayLocation,
+                          _currentLocationString,
                           style: const TextStyle(
-                            fontSize: 14, 
-                            color: Colors.blueAccent, 
+                            fontSize: 14,
+                            color: Colors.blueAccent,
                             fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
