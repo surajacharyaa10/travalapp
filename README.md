@@ -62,7 +62,23 @@ This repository contains both the Flutter frontend app and the custom Node.js/Mo
    npm run dev
    ```
 
-   _The server will run on http://localhost:5000_
+## Environment Variables Configuration
+
+Create a `.env` file in your `backend/` directory with the following variables:
+
+```env
+PORT=8000
+MONGODB_URI=your_mongodb_connection_string
+GROQ_API_KEY=your_groq_api_key
+JWT_SECRET=your_jwt_secret_key
+GOOGLE_PLACES_API_KEY=your_google_places_api_key
+WEATHER_API_KEY=your_openweathermap_api_key
+NEWS_API_KEY=your_news_api_key
+GEOAPIFY_API_KEY=
+
+```
+
+_The server will run on http://localhost:5000_
 
 ### Frontend Setup
 
