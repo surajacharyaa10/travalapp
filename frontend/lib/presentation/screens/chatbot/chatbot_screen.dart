@@ -4,6 +4,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io' show Platform;
 import '../../../data/services/chat_api_service.dart';
+import '../../../data/services/bookmark_service.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -24,6 +25,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatApiService _chatService = ChatApiService();
+  final BookmarkService _bookmarkService = BookmarkService();
 
   final List<ChatMessage> _messages = [
     ChatMessage(
@@ -32,6 +34,58 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     ),
   ];
   bool _isLoading = false;
+  List<dynamic> _bookmarks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBookmarks();
+  }
+
+  Future<void> _fetchBookmarks() async {
+    try {
+      final bookmarks = await _bookmarkService.getBookmarks();
+      setState(() {
+        _bookmarks = bookmarks;
+      });
+    } catch (e) {
+      debugPrint('Error fetching bookmarks: $e');
+    }
+  }
+
+  Future<void> _toggleBookmark(Map<String, dynamic> place) async {
+    final placeId = place['place_id'] ?? place['name'] ?? 'place_id';
+    final isBookmarked = _bookmarks.any(
+      (b) => b['placeId'] == placeId || b['name'] == place['name'],
+    );
+
+    try {
+      if (isBookmarked) {
+        final bookmark = _bookmarks.firstWhere(
+          (b) => b['placeId'] == placeId || b['name'] == place['name'],
+        );
+        await _bookmarkService.removeBookmark(bookmark['_id']);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Removed from Saved Places')),
+        );
+      } else {
+        await _bookmarkService.addBookmark(
+          placeId: placeId.toString(),
+          name: place['name'] ?? 'Unknown Place',
+          address: place['address'] ?? 'Unknown Address',
+          category: 'AI Recommendation',
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved to Bookmarks!')),
+        );
+      }
+      _fetchBookmarks();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update bookmark: $e')),
+      );
+    }
+  }
 
   Future<Map<String, dynamic>> _getCurrentLocationContext() async {
     try {
@@ -157,28 +211,55 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
               padding: const EdgeInsets.only(top: 8.0),
               child: Column(
                 children: message.places!.map((place) {
+                  final placeMap = Map<String, dynamic>.from(place);
+                  final placeId = placeMap['place_id'] ?? placeMap['name'] ?? '';
+                  final isBookmarked = _bookmarks.any(
+                    (b) => b['placeId'] == placeId || b['name'] == placeMap['name'],
+                  );
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8.0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
+                      onTap: () {
+                        final lat = placeMap['lat'] is num ? (placeMap['lat'] as num).toDouble() : null;
+                        final lng = placeMap['lng'] is num ? (placeMap['lng'] as num).toDouble() : null;
+                        if (lat != null && lng != null) {
+                          _openMap(lat, lng, placeMap['name'] ?? '');
+                        }
+                      },
                       leading: const CircleAvatar(
                         backgroundColor: Colors.blueAccent,
                         child: Icon(Icons.place, color: Colors.white),
                       ),
                       title: Text(
-                        place['name'] ?? 'Unknown Place',
+                        placeMap['name'] ?? 'Unknown Place',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      subtitle: Text(place['address'] ?? ''),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.directions, color: Colors.green),
-                        onPressed: () {
-                          final lat = place['lat'] is num ? (place['lat'] as num).toDouble() : null;
-                          final lng = place['lng'] is num ? (place['lng'] as num).toDouble() : null;
-                          if (lat != null && lng != null) {
-                            _openMap(lat, lng, place['name'] ?? '');
-                          }
-                        },
+                      subtitle: Text(placeMap['address'] ?? ''),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+                              color: isBookmarked ? Colors.blueAccent : Colors.grey,
+                            ),
+                            onPressed: () {
+                              _toggleBookmark(placeMap);
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.directions, color: Colors.green),
+                            onPressed: () {
+                              final lat = placeMap['lat'] is num ? (placeMap['lat'] as num).toDouble() : null;
+                              final lng = placeMap['lng'] is num ? (placeMap['lng'] as num).toDouble() : null;
+                              if (lat != null && lng != null) {
+                                _openMap(lat, lng, placeMap['name'] ?? '');
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   );

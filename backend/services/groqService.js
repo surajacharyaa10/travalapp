@@ -38,29 +38,30 @@ const getRecommendations = async (preferences, location, searchHistory) => {
 
     return chatCompletion.choices[0]?.message?.content || '{}';
   } catch (error) {
-    console.error('Error fetching recommendations from Groq, using fallback:', error.message);
+    console.error('Error fetching recommendations from Groq, using dynamic map search:', error.message);
     
     try {
       const geoapifyKey = process.env.GEOAPIFY_API_KEY;
-      if (geoapifyKey) {
-        const axios = require('axios');
-        const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location || 'Kathmandu')}&apiKey=${geoapifyKey}&limit=1`;
+      if (geoapifyKey && location) {
+        const geoUrl = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&apiKey=${geoapifyKey}&limit=1`;
         const geoRes = await axios.get(geoUrl);
         
         if (geoRes.data.features && geoRes.data.features.length > 0) {
           const lat = geoRes.data.features[0].properties.lat;
           const lon = geoRes.data.features[0].properties.lon;
+          const formattedLoc = geoRes.data.features[0].properties.formatted || location;
           
-          let category = 'tourism.attraction';
-          if (preferences && preferences.join(' ').toLowerCase().includes('dining')) category = 'catering.restaurant';
+          let category = 'tourism.attraction,tourism.sights,leisure.park,catering.restaurant';
           
-          const placesUrl = `https://api.geoapify.com/v2/places?categories=${category}&filter=circle:${lon},${lat},15000&limit=3&apiKey=${geoapifyKey}`;
+          const placesUrl = `https://api.geoapify.com/v2/places?categories=${category}&filter=circle:${lon},${lat},25000&limit=4&apiKey=${geoapifyKey}`;
           const placesRes = await axios.get(placesUrl);
           
-          const places = (placesRes.data.features || []).filter(p => p.properties.name).map(p => ({
-            name: p.properties.name,
-            description: p.properties.address_line2 || `A fantastic location based on your interest near ${location}.`
-          }));
+          const places = (placesRes.data.features || [])
+            .filter(p => p.properties.name)
+            .map(p => ({
+              name: p.properties.name,
+              description: p.properties.address_line2 || `Featured destination near ${formattedLoc}.`
+            }));
           
           if (places.length > 0) {
             return JSON.stringify({ recommendations: places });
@@ -68,18 +69,23 @@ const getRecommendations = async (preferences, location, searchHistory) => {
         }
       }
     } catch (fallbackErr) {
-      console.error('Fallback also failed:', fallbackErr.message);
+      console.error('Dynamic map fallback error:', fallbackErr.message);
     }
 
+    const cleanLoc = location || 'your location';
     return JSON.stringify({
       recommendations: [
         {
-          name: "Add your GROQ_API_KEY",
-          description: "Please configure your Groq API key in the backend .env file to get real personalized AI travel suggestions!"
+          name: `Top Sight in ${cleanLoc}`,
+          description: `A popular landmark and scenic viewpoint near ${cleanLoc}. Perfect for exploring!`
         },
         {
-          name: "Alpine Peak Viewpoint",
-          description: `A breathtaking destination matching your interest in adventure and scenic views near ${location || 'your area'}. Enjoy early morning sunrise sights.`
+          name: `Local Heritage & Culture in ${cleanLoc}`,
+          description: `Explore the rich cultural displays, traditional art, and history near ${cleanLoc}.`
+        },
+        {
+          name: `Gourmet Food & Dining in ${cleanLoc}`,
+          description: `Enjoy local cuisine, authentic snacks, and vibrant dining spots in ${cleanLoc}.`
         }
       ]
     });
@@ -182,6 +188,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
         if (locationQuery.toLowerCase() === 'nepal' && category.includes('tourism')) {
           places = [
             {
+              place_id: "nepal_pokhara",
               name: "Pokhara Valley",
               lat: 28.2096,
               lng: 83.9856,
@@ -189,6 +196,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
               rating: 4.9
             },
             {
+              place_id: "nepal_pashupati",
               name: "Pashupatinath Temple",
               lat: 27.7104,
               lng: 85.3487,
@@ -196,6 +204,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
               rating: 4.8
             },
             {
+              place_id: "nepal_lumbini",
               name: "Lumbini (Birthplace of Buddha)",
               lat: 27.4784,
               lng: 83.2758,
@@ -203,6 +212,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
               rating: 4.9
             },
             {
+              place_id: "nepal_annapurna",
               name: "Annapurna Base Camp",
               lat: 28.5300,
               lng: 83.8780,
@@ -210,6 +220,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
               rating: 4.9
             },
             {
+              place_id: "nepal_ktm_durbar",
               name: "Kathmandu Durbar Square",
               lat: 27.7042,
               lng: 85.3067,
@@ -217,6 +228,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
               rating: 4.7
             },
             {
+              place_id: "nepal_everest",
               name: "Mount Everest Base Camp",
               lat: 28.0026,
               lng: 86.8530,
@@ -236,6 +248,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
           places = (placesRes.data.features || [])
             .filter(p => p.properties.name)
             .map(p => ({
+              place_id: p.properties.place_id,
               name: p.properties.name,
               lat: p.properties.lat,
               lng: p.properties.lon,
@@ -245,7 +258,7 @@ const chatWithRAG = async (message, locationContext, searchHistory) => {
             
           if (places.length === 0) {
              // Fallback place if no results
-             places = [{ name: `Popular Place in ${formattedLocationName}`, lat: lat, lng: lon, address: formattedLocationName, rating: 4.5 }];
+             places = [{ place_id: `fallback_${lat}_${lon}`, name: `Popular Place in ${formattedLocationName}`, lat: lat, lng: lon, address: formattedLocationName, rating: 4.5 }];
           }
         }
         
