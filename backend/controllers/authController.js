@@ -66,8 +66,55 @@ const getProfile = async (req, res) => {
   }
 };
 
+const getAllPreferences = async (req, res) => {
+  try {
+    const preferences = [
+      { id: 'adventure', name: 'Adventure & Hiking', icon: '🏔️' },
+      { id: 'cafes', name: 'Cafes & Coffee', icon: '☕' },
+      { id: 'dining', name: 'Fine Dining', icon: '🍽️' },
+      { id: 'culture', name: 'Culture & Heritage', icon: '🏛️' },
+      { id: 'hotels', name: 'Luxury Hotels', icon: '🏨' },
+      { id: 'nature', name: 'Nature & Wildlife', icon: '🏖️' },
+      { id: 'shopping', name: 'Local Markets & Shopping', icon: '🛍️' },
+      { id: 'nightlife', name: 'Nightlife & Bars', icon: '🌃' },
+      { id: 'street_food', name: 'Street Food', icon: '🍜' },
+      { id: 'museums', name: 'Art & Museums', icon: '🎨' },
+      { id: 'wellness', name: 'Wellness & Spa', icon: '🧘' },
+      { id: 'camping', name: 'Camping & Trekking', icon: '🏕️' },
+    ];
+    res.json(preferences);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const { name, preferences } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (name) user.name = name;
+    if (preferences && Array.isArray(preferences)) user.preferences = preferences;
+
+    await user.save();
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      preferences: user.preferences,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   register,
   login,
   getProfile,
+  getAllPreferences,
+  updateProfile,
 };

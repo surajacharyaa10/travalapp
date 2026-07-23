@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/session_manager.dart';
+import '../../../data/services/api_client.dart';
 import '../main_navigation_shell.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -16,20 +17,61 @@ class _SignupScreenState extends State<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
-  
+  final ApiClient _apiClient = ApiClient();
+
   bool _isLoading = false;
+  bool _isLoadingPreferences = true;
   String? _errorMessage;
-  
-  final List<String> _availablePreferences = [
-    'Dining',
-    'Hotels',
-    'Museums',
-    'Cafes',
-    'Nature',
-    'Culture',
-    'Adventure'
-  ];
-  final List<String> _selectedPreferences = [];
+
+  // Master list of preferences fetched live from the backend — no hardcoding.
+  List<Map<String, String>> _allAvailablePreferences = [];
+  // User's actual selected preference IDs (from what they tapped).
+  final Set<String> _selectedPreferences = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    setState(() {
+      _isLoadingPreferences = true;
+    });
+
+    try {
+      final prefsRes = await _apiClient.get('/api/auth/preferences');
+      if (prefsRes is List) {
+        _allAvailablePreferences = prefsRes.map<Map<String, String>>((item) {
+          return {
+            'id': item['id']?.toString() ?? '',
+            'name': item['name']?.toString() ?? '',
+            'icon': item['icon']?.toString() ?? '✨',
+          };
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading preferences: $e');
+      // If the fetch fails, we simply show none rather than
+      // silently substituting a fake/hardcoded list.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingPreferences = false;
+        });
+      }
+    }
+  }
+
+  void _togglePreference(String prefId) {
+    setState(() {
+      if (_selectedPreferences.contains(prefId)) {
+        _selectedPreferences.remove(prefId);
+      } else {
+        _selectedPreferences.add(prefId);
+      }
+    });
+  }
 
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
@@ -39,22 +81,23 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      // Create body with preferences
-      // Note: backend expects preferences in req.body
+      // Send exactly what the user selected — real preference IDs
+      // from the backend list, not hardcoded strings.
       final response = await _authService.register(
         _nameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text.trim(),
-        preferences: _selectedPreferences,
+        preferences: _selectedPreferences.toList(),
       );
 
-      // Save token and info
       if (response['token'] != null) {
         SessionManager.login(response['token'], response['user']);
         if (mounted) {
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (context) => const MainNavigationShell()),
+            MaterialPageRoute(
+              builder: (context) => const MainNavigationShell(),
+            ),
             (route) => false,
           );
         }
@@ -173,28 +216,43 @@ class _SignupScreenState extends State<SignupScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _availablePreferences.map((pref) {
-                    final isSelected = _selectedPreferences.contains(pref.toLowerCase());
-                    return FilterChip(
-                      label: Text(pref),
-                      selected: isSelected,
-                      selectedColor: Colors.blueAccent.withOpacity(0.2),
-                      checkmarkColor: Colors.blueAccent,
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedPreferences.add(pref.toLowerCase());
-                          } else {
-                            _selectedPreferences.remove(pref.toLowerCase());
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
+
+                // Loaded live from GET /api/auth/preferences — no hardcoded list.
+                if (_isLoadingPreferences)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_allAvailablePreferences.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Could not load preferences. Pull to refresh or continue without selecting any.',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _allAvailablePreferences.map((pref) {
+                      final isSelected = _selectedPreferences.contains(
+                        pref['id'],
+                      );
+                      return FilterChip(
+                        avatar: Text(
+                          pref['icon']!,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        label: Text(pref['name']!),
+                        selected: isSelected,
+                        selectedColor: Colors.blueAccent.withOpacity(0.2),
+                        checkmarkColor: Colors.blueAccent,
+                        onSelected: (_) => _togglePreference(pref['id']!),
+                      );
+                    }).toList(),
+                  ),
+
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _signup,

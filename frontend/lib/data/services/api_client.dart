@@ -9,24 +9,33 @@ class ApiClient {
     if (kIsWeb) {
       return 'http://localhost:8000';
     }
-    return Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+
+    return Platform.isAndroid
+        ? 'http://10.0.2.2:8000'
+        : 'http://localhost:8000';
   }
 
   Map<String, String> _getHeaders() {
     final headers = <String, String>{
       'Content-Type': 'application/json; charset=UTF-8',
     };
+
     if (SessionManager.token != null) {
       headers['Authorization'] = 'Bearer ${SessionManager.token}';
     }
+
     return headers;
   }
-  
+
+  // ==========================
+  // GET
+  // ==========================
   Future<dynamic> get(String endpoint) async {
     final response = await http.get(
       Uri.parse('$baseUrl$endpoint'),
       headers: _getHeaders(),
     );
+
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
@@ -34,12 +43,16 @@ class ApiClient {
     }
   }
 
+  // ==========================
+  // POST
+  // ==========================
   Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
     final response = await http.post(
       Uri.parse('$baseUrl$endpoint'),
       headers: _getHeaders(),
       body: json.encode(body),
     );
+
     if (response.statusCode == 200 || response.statusCode == 201) {
       return json.decode(response.body);
     } else {
@@ -47,12 +60,37 @@ class ApiClient {
     }
   }
 
+  // ==========================
+  // PUT  <-- ADDED FIX
+  // ==========================
+  Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: _getHeaders(),
+      body: json.encode(body),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Failed to update data at $endpoint: ${response.body}');
+    }
+  }
+
+  // ==========================
+  // DELETE
+  // ==========================
   Future<dynamic> delete(String endpoint) async {
     final response = await http.delete(
       Uri.parse('$baseUrl$endpoint'),
       headers: _getHeaders(),
     );
+
     if (response.statusCode == 200 || response.statusCode == 204) {
+      if (response.body.isEmpty) {
+        return {};
+      }
+
       return json.decode(response.body);
     } else {
       throw Exception('Failed to delete data from $endpoint: ${response.body}');
